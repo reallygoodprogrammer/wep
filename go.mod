@@ -1,4 +1,4 @@
-module github.com/reallygoodprogrammer/cwep
+module github.com/reallygoodprogrammer/wep
 
 go 1.24.3
 
