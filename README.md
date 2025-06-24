@@ -31,11 +31,14 @@ Usage of wep:
   -a string
     	extract from attribute instead of inner content
   -c int
-    	concurrency level (default 3)
+    	concurrency level (default=3) (default 3)
   -headless
-        run in headless mode
+    	run in headless mode
+  -l string
+    	read from local file path instead of making a request
+  -s	read html data from standard input
   -t float
-    	timeout for requests (default 10)
+    	timeout for requests (default=10) (default 10)
   -u string
     	site url for request
 ```
