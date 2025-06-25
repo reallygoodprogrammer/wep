@@ -105,16 +105,20 @@ func main() {
 						output <- fmt.Sprintf("'%v' could not create page:\n\t%v", url, err)
 						return
 					}
-					defer page.Close()
 
 					_, err = page.Goto(url, playwright.PageGotoOptions{
 						Timeout:   playwright.Float(*timeout),
-						WaitUntil: playwright.WaitUntilStateNetworkidle,
 					})
 					if err != nil {
 						output <- fmt.Sprintf("'%v' could not go to page:\n\t%v", url, err)
 						return
 					}
+
+					ni := playwright.LoadState("networkidle")
+					err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+						State: &ni,
+						Timeout: timeout,
+					})
 
 					content, err := page.Content()
 					if err != nil {
@@ -123,6 +127,7 @@ func main() {
 					}
 
 					process_content([]byte(content))
+					page.Close()
 				}
 			}()
 		}
