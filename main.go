@@ -27,6 +27,7 @@ func main() {
 	stdinput := flag.Bool("s", false, "read html data from standard input")
 	traverse_css := flag.String("T", "", "traverse urls matching css selector arg")
 	traverse_attr := flag.String("A", "", "attribute to match with for '-T' css selector")
+	display_url := flag.Bool("H", false, "display the page-url with each line of output")
 
 	flag.Parse()
 
@@ -45,7 +46,11 @@ func main() {
 	}()
 
 	toOut := func(outputString string, url string) {
-		output <- outputString
+		if *display_url {
+			output <- url + ":" + outputString
+		} else {
+			output <- outputString
+		}
 	}
 
 	errOut := make(chan string)
@@ -59,7 +64,11 @@ func main() {
 	}()
 
 	toErr := func(errString string, url string) {
-		errOut <- errString
+		if *display_url {
+			errOut <- url + ":" + errString
+		} else {
+			errOut <- errString
+		}
 	}
 
 	// create channel for new urls (when traversing)
