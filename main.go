@@ -76,7 +76,7 @@ func main() {
 	urls := make(chan string)
 	var count int64 = 0
 
-	// process page content
+	// process page content (find matching things)
 	process_content := func(content []byte, url string) {
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(content))
 		if err != nil {
@@ -117,7 +117,6 @@ func main() {
 			}()
 		}
 	} else {
-		// start playwright
 		pw, err := playwright.Run()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not start playwright:\n\t%v\n", err)
@@ -135,10 +134,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		// make timeout in seconds
 		*timeout *= 1000
 
-		// diminish the work counter, if zero there are no more urls
 		diminish := func() {
 			if atomic.AddInt64(&count, -1) == 0 {
 				close(urls)
@@ -236,6 +233,7 @@ func main() {
 			})
 		}
 
+		// worker function for fetching and processing url
 		runit = func(url string) {
 			defer diminish()
 			page, err := browser.NewPage()
@@ -270,6 +268,8 @@ func main() {
 			traverse([]byte(content), url)
 		}
 
+		// wrapper function for input channel and calling 
+		// 'worker' function
 		worker := func() {
 			for url := range urls {
 				func() {
@@ -278,6 +278,7 @@ func main() {
 			}
 		}
 
+		// input workers
 		var inWg sync.WaitGroup
 		for i := 0; i < *con; i++ {
 			inWg.Add(1)
@@ -287,6 +288,7 @@ func main() {
 			}()
 		}
 
+		// if url argument provided
 		if *url != "" {
 			atomic.AddInt64(&count, 1)
 			addVisitedDomain(*url)
@@ -307,6 +309,7 @@ func main() {
 	outWg.Wait()
 }
 
+// return absolute url based on base and relative urls
 func absolute_url(base string, relative string) string {
 	baseUrl, err := url.Parse(base)
 	if err != nil {
@@ -326,7 +329,7 @@ func absolute_url(base string, relative string) string {
 	return resolved
 }
 
-
+// return hostname of the url (for domain comparisons)
 func getHostname(urlString string) string {
 	urlObj, err := url.Parse(urlString)
 	if err != nil {
