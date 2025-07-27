@@ -27,6 +27,7 @@ func main() {
 	stdinput := flag.Bool("s", false, "read html data from standard input")
 	traverse_css := flag.String("T", "", "traverse urls matching css selector arg")
 	traverse_attr := flag.String("A", "", "attribute to match with for '-T' css selector")
+	traverse_out := flag.Bool("L", false, "traverse to urls outside domains from initial urls")
 	display_url := flag.Bool("H", false, "display the page-url with each line of output")
 
 	flag.Parse()
@@ -146,18 +147,52 @@ func main() {
 
 		// declaring runit here so it can be called in traverse
 		var runit func(url string)
+
+		// urls that have already been visited
 		visited := make(map[string]bool)
 		var visitedLock sync.Mutex
 
-		inVisited := func(url string) bool {
-			visitedLock.Lock()
-			defer visitedLock.Unlock()
+		// domains that are allowed for traversing
+		visited_domains := make(map[string]bool)
+		var visitedDomainsLock sync.Mutex
 
-			if !visited[url] {
-				visited[url] = true
+		// add a domain to the visited_domains map
+		addVisitedDomain := func(url string) {
+			hostname := getHostname(url)
+
+			visitedDomainsLock.Lock()
+			defer visitedDomainsLock.Unlock()
+			visited_domains[hostname] = true
+		}
+
+		// check if the url is in the visited map
+		inVisited := func(url string) bool {
+			value := func() bool {
+				visitedLock.Lock()
+				defer visitedLock.Unlock()
+
+				if !visited[url] {
+					visited[url] = true
+					return false
+				}
+				return true
+			}()
+			if value {
+				return true
+			}
+			
+			// code below here checks if the url in the
+			// allowed domains map
+			if *traverse_out {
 				return false
 			}
-			return true
+			
+			hostname := getHostname(url)
+
+			visitedDomainsLock.Lock()
+			defer visitedDomainsLock.Unlock()
+
+			return !visited_domains[hostname]
 		}
 
 		// find matching traversal urls and add them to urls channel (or process them)
@@ -254,11 +289,13 @@ func main() {
 
 		if *url != "" {
 			atomic.AddInt64(&count, 1)
+			addVisitedDomain(*url)
 			urls <- *url
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			for scanner.Scan() {
 				atomic.AddInt64(&count, 1)
+				addVisitedDomain(*url)
 				urls <- scanner.Text()
 			}
 		}
@@ -287,4 +324,13 @@ func absolute_url(base string, relative string) string {
 		return ""
 	}
 	return resolved
+}
+
+
+func getHostname(urlString string) string {
+	urlObj, err := url.Parse(urlString)
+	if err != nil {
+		return ""
+	}
+	return urlObj.Hostname()
 }

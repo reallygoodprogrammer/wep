@@ -35,6 +35,7 @@ Usage of wep:
   -A string
     	attribute to match with for '-T' css selector
   -H	display the page-url with each line of output
+  -L	traverse to urls outside domains from initial urls
   -T string
     	traverse urls matching css selector arg
   -a string
