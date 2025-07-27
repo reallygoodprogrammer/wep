@@ -27,7 +27,7 @@ func main() {
 	stdinput := flag.Bool("s", false, "read html data from standard input")
 	traverse_css := flag.String("T", "", "traverse urls matching css selector arg")
 	traverse_attr := flag.String("A", "", "attribute to match with for '-T' css selector")
-	traverse_out := flag.Bool("L", false, "traverse to urls outside domains from initial urls")
+	traverse_out := flag.Bool("L", false, "allow traversal to outside domains")
 	display_url := flag.Bool("H", false, "display the page-url with each line of output")
 
 	flag.Parse()
@@ -80,7 +80,7 @@ func main() {
 	process_content := func(content []byte, url string) {
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(content))
 		if err != nil {
-			toErr(fmt.Sprintf("'%v' could not make reader:\n\t%v", err), url) 
+			toErr(fmt.Sprintf("'%v' could not make reader:\n\t%v", err), url)
 			return
 		}
 
@@ -177,13 +177,13 @@ func main() {
 			if value {
 				return true
 			}
-			
+
 			// code below here checks if the url in the
 			// allowed domains map
 			if *traverse_out {
 				return false
 			}
-			
+
 			hostname := getHostname(url)
 
 			visitedDomainsLock.Lock()
@@ -268,7 +268,7 @@ func main() {
 			traverse([]byte(content), url)
 		}
 
-		// wrapper function for input channel and calling 
+		// wrapper function for input channel and calling
 		// 'worker' function
 		worker := func() {
 			for url := range urls {
