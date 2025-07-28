@@ -16,20 +16,61 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
+const usage = `Usage of wep: wep [OPTIONS] <CSS SELECTOR>
+-u, --url <URL>			set site url for initial request
+-a, --attr <ATTR>		extract from ATTR attribute instead of HTML
+-H, --display-url		display the url of the page with each match
+
+-c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
+-t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
+-n, --headless			run the program in browserless mode
+
+-l, --local <FILENAME>		search through local HTML file instead
+-s, --stdin			read HTML data from stdin instead of urls
+
+-T, --traverse <CSS SELECTOR>	find new urls through matching css selector
+-A, --traverse-attr <ATTR>	find traverse url in ATTR of match
+-L, --leave-domain		allow finding urls from different domains
+`
+
 func main() {
 	// arguments:
-	url := flag.String("u", "", "site url for request")
-	con := flag.Int("c", 3, "concurrency level")
-	timeout := flag.Float64("t", 10.0, "timeout for requests")
-	attr := flag.String("a", "", "extract from attribute instead of inner content")
-	headless := flag.Bool("headless", false, "run in headless mode")
-	local := flag.String("l", "", "read from local file path instead of making a request")
-	stdinput := flag.Bool("s", false, "read html data from standard input")
-	traverse_css := flag.String("T", "", "traverse urls matching css selector arg")
-	traverse_attr := flag.String("A", "", "attribute to match with for '-T' css selector")
-	traverse_out := flag.Bool("L", false, "allow traversal to outside domains")
-	display_url := flag.Bool("H", false, "display the page-url with each line of output")
+	var url string
+	var con int
+	var timeout float64
+	var attr string
+	var headless bool
+	var local string
+	var stdinput bool
+	var traverse_css string
+	var traverse_attr string
+	var traverse_out bool
+	var display_url bool
 
+	flag.StringVar(&url, "u", "", "site url for request")
+	flag.StringVar(&url, "url", "", "site url for request")
+	flag.IntVar(&con, "c", 3, "concurrency level")
+	flag.IntVar(&con, "concurrency", 3, "concurrency level")
+	flag.Float64Var(&timeout, "t", 10.0, "timeout for requests")
+	flag.Float64Var(&timeout, "timeout", 10.0, "timeout for requests")
+	flag.StringVar(&attr, "a", "", "extract from attribute instead of inner content")
+	flag.StringVar(&attr, "attr", "", "extract from attribute instead of inner content")
+	flag.BoolVar(&headless, "n", false, "run in headless mode")
+	flag.BoolVar(&headless, "headless", false, "run in headless mode")
+	flag.StringVar(&local, "l", "", "read from local file path instead of making a request")
+	flag.StringVar(&local, "local", "", "read from local file path instead of making a request")
+	flag.BoolVar(&stdinput, "s", false, "read html data from standard input")
+	flag.BoolVar(&stdinput, "stdin", false, "read html data from standard input")
+	flag.StringVar(&traverse_css, "T", "", "traverse urls matching css selector arg")
+	flag.StringVar(&traverse_css, "traverse", "", "traverse urls matching css selector arg")
+	flag.StringVar(&traverse_attr, "A", "", "attribute to match with for '-T' css selector")
+	flag.StringVar(&traverse_attr, "traverse-attr", "", "attribute to match with for '-T' css selector")
+	flag.BoolVar(&traverse_out, "L", false, "allow traversal to outside domains")
+	flag.BoolVar(&traverse_out, "leave-domain", false, "allow traversal to outside domains")
+	flag.BoolVar(&display_url, "H", false, "display the page-url with each line of output")
+	flag.BoolVar(&display_url, "display-url", false, "display the page-url with each line of output")
+
+	flag.Usage = func() { fmt.Printf("%s", usage) }
 	flag.Parse()
 
 	query := strings.Join(flag.Args(), " ")
@@ -47,7 +88,7 @@ func main() {
 	}()
 
 	toOut := func(outputString string, url string) {
-		if *display_url {
+		if display_url {
 			output <- url + ":" + outputString
 		} else {
 			output <- outputString
@@ -65,7 +106,7 @@ func main() {
 	}()
 
 	toErr := func(errString string, url string) {
-		if *display_url {
+		if display_url {
 			errOut <- url + ":" + errString
 		} else {
 			errOut <- errString
@@ -80,16 +121,16 @@ func main() {
 	process_content := func(content []byte, url string) {
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(content))
 		if err != nil {
-			toErr(fmt.Sprintf("'%v' could not make reader:\n\t%v", err), url)
+			toErr(fmt.Sprintf("could not make reader: %v", err), url)
 			return
 		}
 
 		doc.Find(query).Each(func(i int, s *goquery.Selection) {
 			html, err := s.Html()
 			if err != nil {
-				toErr(fmt.Sprintf("'%v' could not get inner html:\n\t%v", url, err), url)
-			} else if *attr != "" {
-				val, valid := s.Attr(*attr)
+				toErr(fmt.Sprintf("could not get inner html: %v", url, err), url)
+			} else if attr != "" {
+				val, valid := s.Attr(attr)
 				if valid {
 					toOut(val, url)
 				}
@@ -100,17 +141,17 @@ func main() {
 	}
 
 	// if reading from local file, just process the document
-	if *local != "" {
-		content, err := os.ReadFile(*local)
+	if local != "" {
+		content, err := os.ReadFile(local)
 		if err != nil {
-			toErr(fmt.Sprintf("'%s' could not read file:\n\t%v", *local, err), "local-file")
+			toErr(fmt.Sprintf("'%s' could not read file: %v", local, err), "local-file")
 		} else {
 			process_content(content, "local-file")
 		}
-	} else if *stdinput {
+	} else if stdinput {
 		content, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			toErr(fmt.Sprintf("could not read stdin:\n\t%v", err), "stdin")
+			toErr(fmt.Sprintf("could not read stdin: %v", err), "stdin")
 		} else {
 			func() {
 				process_content(content, "stdin")
@@ -119,22 +160,22 @@ func main() {
 	} else {
 		pw, err := playwright.Run()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not start playwright:\n\t%v\n", err)
+			fmt.Fprintf(os.Stderr, "could not start playwright: %v", err)
 			os.Exit(1)
 		}
 		defer pw.Stop()
 
 		browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-			Headless: playwright.Bool(*headless),
+			Headless: playwright.Bool(headless),
 			Args:     []string{"--no-sandbox"},
 		})
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not start browser:\n\t%v", err)
+			fmt.Fprintf(os.Stderr, "could not start browser: %v", err)
 			os.Exit(1)
 		}
 
-		*timeout *= 1000
+		timeout *= 1000
 
 		diminish := func() {
 			if atomic.AddInt64(&count, -1) == 0 {
@@ -180,7 +221,7 @@ func main() {
 
 			// code below here checks if the url in the
 			// allowed domains map
-			if *traverse_out {
+			if traverse_out {
 				return false
 			}
 
@@ -196,16 +237,16 @@ func main() {
 		traverse := func(content []byte, url string) {
 			doc, err := goquery.NewDocumentFromReader(bytes.NewReader(content))
 			if err != nil {
-				toErr(fmt.Sprintf("could not make reader for traversal:\n\t%v", err), url)
+				toErr(fmt.Sprintf("could not make reader for traversal: %v", err), url)
 				return
 			}
 
-			doc.Find(*traverse_css).Each(func(i int, s *goquery.Selection) {
+			doc.Find(traverse_css).Each(func(i int, s *goquery.Selection) {
 				html, err := s.Html()
 				if err != nil {
-					toErr(fmt.Sprintf("could not get inner html:\n\t%v", err), url)
-				} else if *traverse_attr != "" {
-					val, valid := s.Attr(*attr)
+					toErr(fmt.Sprintf("could not get inner html: %v", err), url)
+				} else if traverse_attr != "" {
+					val, valid := s.Attr(traverse_attr)
 					if valid {
 						atomic.AddInt64(&count, 1)
 						traverse_val := absolute_url(url, val)
@@ -238,27 +279,27 @@ func main() {
 			defer diminish()
 			page, err := browser.NewPage()
 			if err != nil {
-				toErr(fmt.Sprintf("could not create page:\n\t%v", err), url)
+				toErr(fmt.Sprintf("could not create page: %v", err), url)
 				return
 			}
 
 			_, err = page.Goto(url, playwright.PageGotoOptions{
-				Timeout: playwright.Float(*timeout),
+				Timeout: playwright.Float(timeout),
 			})
 			if err != nil {
-				toErr(fmt.Sprintf("could not go to page:\n\t%v", err), url)
+				toErr(fmt.Sprintf("could not go to page: %v", err), url)
 				return
 			}
 
 			ni := playwright.LoadState("networkidle")
 			err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
 				State:   &ni,
-				Timeout: timeout,
+				Timeout: &timeout,
 			})
 
 			content, err := page.Content()
 			if err != nil {
-				toErr(fmt.Sprintf("could not get page content:\n\t%v", err), url)
+				toErr(fmt.Sprintf("could not get page content: %v", err), url)
 				return
 			}
 
@@ -280,7 +321,7 @@ func main() {
 
 		// input workers
 		var inWg sync.WaitGroup
-		for i := 0; i < *con; i++ {
+		for i := 0; i < con; i++ {
 			inWg.Add(1)
 			go func() {
 				defer inWg.Done()
@@ -289,16 +330,17 @@ func main() {
 		}
 
 		// if url argument provided
-		if *url != "" {
+		if url != "" {
 			atomic.AddInt64(&count, 1)
-			addVisitedDomain(*url)
-			urls <- *url
+			addVisitedDomain(url)
+			urls <- url
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			for scanner.Scan() {
+				url = scanner.Text()
 				atomic.AddInt64(&count, 1)
-				addVisitedDomain(*url)
-				urls <- scanner.Text()
+				addVisitedDomain(url)
+				urls <- url
 			}
 		}
 

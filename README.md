@@ -31,24 +31,19 @@ wep -a src img < urls.txt
 ```
 
 ```
-Usage of wep:
-  -A string
-    	attribute to match with for '-T' css selector
-  -H	display the page-url with each line of output
-  -L	allow traversal to outside domains
-  -T string
-    	traverse urls matching css selector arg
-  -a string
-    	extract from attribute instead of inner content
-  -c int
-    	concurrency level (default 3)
-  -headless
-    	run in headless mode
-  -l string
-    	read from local file path instead of making a request
-  -s	read html data from standard input
-  -t float
-    	timeout for requests (default 10)
-  -u string
-    	site url for request
+Usage of wep: wep [OPTIONS] <CSS SELECTOR>
+-u, --url <URL>			set site url for initial request
+-a, --attr <ATTR>		extract from ATTR attribute instead of HTML
+-H, --display-url		display the url of the page with each match
+
+-c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
+-t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
+--headless			run the program in browserless mode
+
+-l, --local <FILENAME>		search through local HTML file instead
+-s, --stdin			read HTML data from stdin instead of urls
+
+-T, --traverse <CSS SELECTOR>	find new urls through matching css selector
+-A, --traverse-attr <ATTR>	find traverse url in ATTR of match
+-L, --leave-domain		allow finding urls from different domains
 ```
