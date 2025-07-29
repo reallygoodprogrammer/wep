@@ -300,7 +300,8 @@ func main() {
 			var content string
 
 			if disable {
-				fmt.Println("lkasndlkcndsac")
+				toOut("I haven't implemented the 'disable' option yet XD", "")
+				return
 			} else {
 				if cookieStr != "" {
 					var pwCookies []playwright.OptionalCookie
@@ -427,6 +428,9 @@ func getHostname(urlString string) string {
 // get the cookies map from a cookies option string
 func getCookies(cookieStr string) map[string]string {
 	m := make(map[string]string)
+	if cookieStr == "" {
+		return m
+	}
 
 	cookiePairs := strings.Split(cookieStr, ";")
 	for _, p := range cookiePairs {
