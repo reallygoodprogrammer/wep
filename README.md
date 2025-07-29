@@ -3,7 +3,8 @@
 scrape responses using [goquery](https://github.com/PuerkitoBio/goquery)
 and [playwright](https://github.com/playwright-community/playwright-go).
 Works by going to url, waiting for network to idle, then extracting css-selector
-query content from page. Has the ability to recurse through urls in page.
+query content from page. Has the ability to recurse through urls in page
+based on separate matching css selector and attribute options.
 
 install with : `go install github.com/reallygoodprogrammer/wep@latest`
 
@@ -30,15 +31,18 @@ wep -a src -T "a.rec[href]" -A href "img[src]"
 wep -a src img < urls.txt
 ```
 
+## usage:
+
 ```
 Usage of wep: wep [OPTIONS] <CSS SELECTOR>
 -u, --url <URL>			set site url for initial request
 -a, --attr <ATTR>		extract from ATTR attribute instead of HTML
 -H, --display-url		display the url of the page with each match
 
+-n, --headless			run the program in browserless mode when dynamic
 -c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
 -t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
---headless			run the program in browserless mode
+-b, --cookie <COOKIE>		set 'Cookie' header for each request
 
 -l, --local <FILENAME>		search through local HTML file instead
 -s, --stdin			read HTML data from stdin instead of urls
