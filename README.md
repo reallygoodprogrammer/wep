@@ -39,7 +39,8 @@ Usage of wep: wep [OPTIONS] <CSS SELECTOR>
 -a, --attr <ATTR>		extract from ATTR attribute instead of HTML
 -H, --display-url		display the url of the page with each match
 
--n, --headless			run the program in browserless mode when dynamic
+-n, --headless			run the program in chromium headless mode
+-d, --disable			use net/http instead of playwright for requests
 -c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
 -t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
 -b, --cookie <COOKIE>		set 'Cookie' header for each request

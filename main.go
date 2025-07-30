@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -22,6 +23,7 @@ const usage = `Usage of wep: wep [OPTIONS] <CSS SELECTOR>
 -H, --display-url		display the url of the page with each match
 
 -n, --headless			run the program in chromium headless mode
+-d, --disable			use net/http instead of playwright for requests
 -c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
 -t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
 -b, --cookie <COOKIE>		set 'Cookie' header for each request
@@ -265,9 +267,11 @@ func main() {
 			})
 		}
 
-		// start playwright
+		httpClient := &http.Client{}
+
 		var context playwright.BrowserContext
 		if !disable {
+			// start playwright
 			pw, err := playwright.Run()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "could not start playwright: %v", err)
@@ -290,8 +294,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "could not create browser context: %v", err)
 				os.Exit(1)
 			}
-		}
-
+		} 
 
 		// worker function for fetching and processing url
 		runit = func(url string) {
@@ -300,8 +303,29 @@ func main() {
 			var content string
 
 			if disable {
-				toOut("I haven't implemented the 'disable' option yet XD", "")
-				return
+				req, err := http.NewRequest("GET", url, nil)
+				if err != nil {
+					toErr(fmt.Sprintf("error creating request: %v\n", err), url)
+					return
+				}
+
+				if cookieStr != "" {
+					req.Header.Set("Cookie", cookieStr)
+				}
+
+				resp, err := httpClient.Do(req)
+				if err != nil {
+					toErr(fmt.Sprintf("error getting response: %v\n", err), url)
+					return
+				}
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					toErr(fmt.Sprintf("could not read response body: %v\n", err), url)
+					return
+				}
+				content = string(body)
 			} else {
 				if cookieStr != "" {
 					var pwCookies []playwright.OptionalCookie
@@ -350,7 +374,6 @@ func main() {
 			} 
 
 			process_content([]byte(content), url)
-
 			traverse([]byte(content), url)
 		}
 
