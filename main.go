@@ -24,12 +24,13 @@ const usage = `Usage of wep: wep [OPTIONS] <CSS SELECTOR>
 
 -n, --headless			run the program in chromium headless mode
 -d, --disable			use net/http instead of playwright for requests
--c, --concurrency <LEVEL>	set concurrency level for requests (def=3)
+-c, --concurrency <LEVEL>	set concurrency level for requests (def=1)
 -t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
 -b, --cookie <COOKIE>		set 'Cookie' header for each request
+-i, --inner			display only the inner content of matching element
 
 -l, --local <FILENAME>		search through local HTML file instead
--s, --stdin			read HTML data from stdin instead of urls
+-s, --stdin			read urls from stdin instead of html data
 
 -T, --traverse <CSS SELECTOR>	find new urls through matching css selector
 -A, --traverse-attr <ATTR>	find traverse url in ATTR of match
@@ -51,11 +52,12 @@ func main() {
 	var display_url bool
 	var disable bool
 	var cookieStr string
+	var inner bool
 
 	flag.StringVar(&url, "u", "", "")
 	flag.StringVar(&url, "url", "", "")
-	flag.IntVar(&con, "c", 3, "")
-	flag.IntVar(&con, "concurrency", 3, "")
+	flag.IntVar(&con, "c", 1, "")
+	flag.IntVar(&con, "concurrency", 1, "")
 	flag.Float64Var(&timeout, "t", 10.0, "")
 	flag.Float64Var(&timeout, "timeout", 10.0, "")
 	flag.StringVar(&attr, "a", "", "")
@@ -78,6 +80,8 @@ func main() {
 	flag.BoolVar(&disable, "disable", false, "")
 	flag.StringVar(&cookieStr, "b", "", "")
 	flag.StringVar(&cookieStr, "cookie", "", "")
+	flag.BoolVar(&inner, "i", false, "")
+	flag.BoolVar(&inner, "inner", false, "")
 
 	flag.Usage = func() { fmt.Printf("%s", usage) }
 	flag.Parse()
@@ -136,10 +140,20 @@ func main() {
 		}
 
 		doc.Find(query).Each(func(i int, s *goquery.Selection) {
-			html, err := s.Html()
-			if err != nil {
-				toErr(fmt.Sprintf("could not get inner html: %v", url, err), url)
-			} else if attr != "" {
+			var html string
+			if inner {
+				html, err = s.Html()
+				if err != nil {
+					toErr(fmt.Sprintf("could not get html: %v", url, err), url)
+				} 
+			} else {
+				html, err = goquery.OuterHtml(s)
+				if err != nil {
+					toErr(fmt.Sprintf("could not get inner html: %v", url, err), url)
+				} 
+			}
+
+			if attr != "" {
 				val, valid := s.Attr(attr)
 				if valid {
 					toOut(val, url)
@@ -158,7 +172,7 @@ func main() {
 		} else {
 			process_content(content, "local-file")
 		}
-	} else if stdinput {
+	} else if !stdinput {
 		content, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			toErr(fmt.Sprintf("could not read stdin: %v", err), "stdin")
