@@ -23,18 +23,18 @@ const usage = `Usage of wep: wep [OPTIONS] <CSS SELECTOR>
 -H, --display-url		display the url of the page with each match
 
 -n, --headless			run the program in chromium headless mode
--d, --disable			use net/http instead of playwright for requests
+-p, --playwright		use playwright instead of net/http lib for requests
 -c, --concurrency <LEVEL>	set concurrency level for requests (def=1)
 -t, --timeout <LEVEL>		set timeout for requests in sec (def=10)
 -b, --cookie <COOKIE>		set 'Cookie' header for each request
 -i, --inner			display only the inner content of matching element
 
 -l, --local <FILENAME>		search through local HTML file instead
--s, --stdin			read urls from stdin instead of html data
+-s, --stdin-urls		read urls from stdin instead of html data
 
--T, --traverse <CSS SELECTOR>	find new urls through matching css selector
--A, --traverse-attr <ATTR>	find traverse url in ATTR of match
--L, --leave-domain		allow finding urls from different domains
+-T, --traverse <CSS SELECTOR>	find new urls to spider by matching css selector
+-A, --traverse-attr <ATTR>	find spider urls in ATTR of matching -T arg
+-L, --leave-domain		allow spidering urls outside original domain
 `
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 	var traverse_attr string
 	var traverse_out bool
 	var display_url bool
-	var disable bool
+	var enable_pw bool
 	var cookieStr string
 	var inner bool
 
@@ -76,8 +76,8 @@ func main() {
 	flag.BoolVar(&traverse_out, "leave-domain", false, "")
 	flag.BoolVar(&display_url, "H", false, "")
 	flag.BoolVar(&display_url, "display-url", false, "")
-	flag.BoolVar(&disable, "d", false, "")
-	flag.BoolVar(&disable, "disable", false, "")
+	flag.BoolVar(&enable_pw, "p", false, "")
+	flag.BoolVar(&enable_pw, "playwright", false, "")
 	flag.StringVar(&cookieStr, "b", "", "")
 	flag.StringVar(&cookieStr, "cookie", "", "")
 	flag.BoolVar(&inner, "i", false, "")
@@ -172,16 +172,7 @@ func main() {
 		} else {
 			process_content(content, "local-file")
 		}
-	} else if !stdinput {
-		content, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			toErr(fmt.Sprintf("could not read stdin: %v", err), "stdin")
-		} else {
-			func() {
-				process_content(content, "stdin")
-			}()
-		}
-	} else {
+	} else if stdinput || url != "" {
 		timeout *= 1000
 
 		diminish := func() {
@@ -284,7 +275,7 @@ func main() {
 		httpClient := &http.Client{}
 
 		var context playwright.BrowserContext
-		if !disable {
+		if enable_pw {
 			// start playwright
 			pw, err := playwright.Run()
 			if err != nil {
@@ -316,7 +307,7 @@ func main() {
 
 			var content string
 
-			if disable {
+			if !enable_pw {
 				req, err := http.NewRequest("GET", url, nil)
 				if err != nil {
 					toErr(fmt.Sprintf("error creating request: %v\n", err), url)
@@ -427,6 +418,15 @@ func main() {
 		}
 
 		inWg.Wait()
+	} else {
+		content, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			toErr(fmt.Sprintf("could not read stdin: %v", err), "stdin")
+		} else {
+			func() {
+				process_content(content, "stdin")
+			}()
+		}
 	}
 
 	close(output)
